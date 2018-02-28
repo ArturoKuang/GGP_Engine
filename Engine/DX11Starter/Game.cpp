@@ -56,9 +56,11 @@ Game::~Game()
 	//release texture
 	if (samplerState) { samplerState->Release(); samplerState = 0; }
 	if (clothTexture) { clothTexture->Release(); clothTexture = 0; }
+	if (wickTexture) { wickTexture->Release(); wickTexture = 0; }
 
 	//release material
 	delete material;
+	delete wickMaterial;
 	//release canera
 	delete camera;
 	// Delete our simple shader objects, which
