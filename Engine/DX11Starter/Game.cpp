@@ -46,9 +46,11 @@ Game::~Game()
 	// we've made in the Game class
 	if (vertexBuffer) { vertexBuffer->Release(); }
 	if (indexBuffer) { indexBuffer->Release(); }
-	if (obj) { delete obj;  }
-	if (obj_1) { delete obj_1; }
-	if (obj_2) { delete obj_2; }
+	if (sphere) { delete sphere;  }
+	if (cloth) { delete cloth; }
+	if (clothVertices) delete clothVertices;
+	if (clothIndices) delete clothIndices;
+	if (m_particleSystem) delete m_particleSystem;
 	//release entities 
 	for (int i = 0; i < entityList.size(); i++) {
 		delete entityList[i];
@@ -111,15 +113,11 @@ void Game::Init()
 	material = new Material(vertexShader, pixelShader, clothTexture, samplerState);
 	wickMaterial = new Material(vertexShader, pixelShader, wickTexture, samplerState);
 	//intialize entities
-	entityList.push_back(new Entities(obj, material));
-	entityList.push_back(new Entities(obj_1, wickMaterial));
-	entityList[0]->SetTranslation(1, 1, 0);
-	entityList[1]->SetTranslation(1, 2, 0);
-
-	// Tell the input assembler stage of the pipeline what kind of
-	// geometric primitives (points, lines or triangles) we want to draw.  
-	// Essentially: "What kind of shape should the GPU draw with our data?"
-	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	entityList.push_back(new Entities(sphere, material));
+	entityList.push_back(new Entities(cloth, wickMaterial));
+	entityList[0]->SetTranslation(0, 0, 0);
+	entityList[1]->SetTranslation(0, 0, 0);
+	entityList[1]->SetParticleSystem(m_particleSystem);
 }
 
 // --------------------------------------------------------
@@ -187,67 +185,55 @@ void Game::CreateMatrices()
 // --------------------------------------------------------
 void Game::CreateBasicGeometry()
 {
-	// Create some temporary variables to represent colors
-	// - Not necessary, just makes things more readable
-	XMFLOAT4 red = XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
-	XMFLOAT4 green = XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
-	XMFLOAT4 blue = XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
+	size_t clothVerticesSize;
+	int clothIndexCount;
 
-	// Set up the vertices of the triangle we would like to draw
-	// - We're going to copy this array, exactly as it exists in memory
-	//    over to a DirectX-controlled data structure (the vertex buffer)
-	Vertex vertices[] =
-	{
-		{ XMFLOAT3(+0.0f, +1.0f, +0.0f), XMFLOAT3(0.0f,0.0f,-1.0f), XMFLOAT2(0.0f,0.0f) },
-		{ XMFLOAT3(+1.5f, -1.0f, +0.0f), XMFLOAT3(0.0f,0.0f,-1.0f), XMFLOAT2(0.0f,0.0f) },
-		{ XMFLOAT3(-1.5f, -1.0f, +0.0f), XMFLOAT3(0.0f,0.0f,-1.0f), XMFLOAT2(0.0f,0.0f) },
-	};
+	m_particleSystem = new ParticleSystem;
+	m_particleSystem->Init();
+	
+	//const float length = 1.0f;
+	const uint32_t PARTICLE_DIM = 32;
+	//const float size = length / (static_cast<float>(PARTICLE_DIM - 1.0f));
+	clothVertices = new VertexPosColor[PARTICLE_DIM * PARTICLE_DIM];
+	clothVerticesSize = sizeof(VertexPosColor) * (PARTICLE_DIM * PARTICLE_DIM);
 
-	// Set up the indices, which tell us which vertices to use and in which order
-	// - This is somewhat redundant for just 3 vertices (it's a simple example)
-	// - Indices are technically not required if the vertices are in the buffer 
-	//    in the correct order and each one will be used exactly once
-	// - But just to see how it's done...
-	unsigned int indices[] = { 0, 1, 2 };
+	//vertex buffer for cloth
+	uint32_t ii = 0;
+	for (uint32_t zz = 0; zz < PARTICLE_DIM; ++zz) {
+		for (uint32_t xx = 0; xx < PARTICLE_DIM; ++xx) {
+			clothVertices[ii].pos = m_particleSystem->GetParticlesPos(ii);
+			clothVertices[ii].color = XMFLOAT3(1.0f, 1.0f, 1.0f);
+			ii++;
 
-	//square
-	Vertex squareVerticies[] =
-	{
-		{ XMFLOAT3(+3.0f, +0.0f, +0.0f), XMFLOAT3(0.0f,0.0f,-1.0f), XMFLOAT2(0.0f,0.0f)},
-		{ XMFLOAT3(+3.0f, -0.5f, +0.0f), XMFLOAT3(0.0f,0.0f,-1.0f), XMFLOAT2(0.0f,0.0f) },
-		{ XMFLOAT3(+2.5f, -0.5f, +0.0f), XMFLOAT3(0.0f,0.0f,-1.0f), XMFLOAT2(0.0f,0.0f) },
+		}
+	}
+	//index buffer for cloth 
+	clothIndexCount = (PARTICLE_DIM - 1) * 2 * (PARTICLE_DIM) * 2;
+	clothIndices = new unsigned short[clothIndexCount];
+	UINT clothIndicesSize = clothIndexCount * sizeof(unsigned short);
+	//index buffer for cloth 
+	//horizontal lines
+	ii = 0;
+	for (uint32_t zz = 0; zz < PARTICLE_DIM; ++zz) {
+		for (uint32_t xx = 0; xx < PARTICLE_DIM - 1; ++xx) {
+			clothIndices[ii++] = xx + zz * PARTICLE_DIM;
+			clothIndices[ii++] = (xx + 1) + zz * PARTICLE_DIM;
+		}
+	}
+	//veritcal lines 
+	for (uint32_t xx = 0; xx < PARTICLE_DIM; ++xx) {
+		for (uint32_t zz = 0; zz < PARTICLE_DIM - 1; ++zz) {
+			clothIndices[ii++] = xx + zz * PARTICLE_DIM;
+			clothIndices[ii++] = xx + (zz + 1) * PARTICLE_DIM;
+		}
+	}
 
-		{ XMFLOAT3(+2.5f, -0.5f, +0.0f), XMFLOAT3(0.0f,0.0f,-1.0f), XMFLOAT2(0.0f,0.0f) },
-		{ XMFLOAT3(+2.5f, +0.0f, +0.0f), XMFLOAT3(0.0f,0.0f,-1.0f), XMFLOAT2(0.0f,0.0f) },
-		{ XMFLOAT3(+3.0f, +0.0f, +0.0f), XMFLOAT3(0.0f,0.0f,-1.0f), XMFLOAT2(0.0f,0.0f) },
+	/*for (int i = 0; i < clothIndexCount; i++){
+		printf("%d ", clothIndices[i]);
+	}*/
 
-	};
-	unsigned int sqaureIndices[] = { 0, 1, 2, 3, 4, 5 };
-
-	//some shape
-	Vertex shapeVerticies[] =
-	{	
-		
-		{ XMFLOAT3(+3.0f, +1.5f, +0.0f), XMFLOAT3(0.0f,0.0f,-1.0f), XMFLOAT2(0.0f,0.0f) },
-		{ XMFLOAT3(+3.0f, +0.5f, +0.0f), XMFLOAT3(0.0f,0.0f,-1.0f), XMFLOAT2(0.0f,0.0f) },
-		{ XMFLOAT3(+2.5f, +0.5f, +0.0f), XMFLOAT3(0.0f,0.0f,-1.0f), XMFLOAT2(0.0f,0.0f) },
-							 
-		{ XMFLOAT3(+2.5f, +0.5f, +0.0f), XMFLOAT3(0.0f,0.0f,-1.0f), XMFLOAT2(0.0f,0.0f) },
-		{ XMFLOAT3(+2.5f, +1.5f, +0.0f), XMFLOAT3(0.0f,0.0f,-1.0f), XMFLOAT2(0.0f,0.0f) },
-		{ XMFLOAT3(+3.0f, +1.5f, +0.0f), XMFLOAT3(0.0f,0.0f,-1.0f), XMFLOAT2(0.0f,0.0f) },
-		
-		
-		{ XMFLOAT3(+2.75f, +1.75f, +0.0f), XMFLOAT3(0.0f,0.0f,-1.0f), XMFLOAT2(0.0f,0.0f) },
-		{ XMFLOAT3(+3.0f, +1.5f, +0.0f), XMFLOAT3(0.0f,0.0f,-1.0f), XMFLOAT2(0.0f,0.0f) },
-		{ XMFLOAT3(+2.5f, +1.5f, +0.0f), XMFLOAT3(0.0f,0.0f,-1.0f), XMFLOAT2(0.0f,0.0f) },
-	};
-
-	unsigned int shapeIndices[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8};
-
-	obj = new Mesh("Models/sphere.obj", device);
-	obj_1 = new Mesh("Models/sphere.obj", device);
-	obj_2 = new Mesh(shapeVerticies, 9, shapeIndices, 9, device);
-
+	cloth = new Mesh(clothVertices, clothVerticesSize, clothIndices, clothIndicesSize, device);
+	sphere = new Mesh("Models/sphere.obj", device);
 }
 
 
@@ -280,10 +266,10 @@ void Game::Update(float deltaTime, float totalTime)
 	if (GetAsyncKeyState(VK_ESCAPE))
 		Quit();
 	//move entities 
-	for (int i = 0; i < entityList.size(); i++) {
+	/*for (int i = 0; i < entityList.size(); i++) {
 		entityList[i]->Move(totalTime + i);
-		worldMatrix = entityList[i]->GetWorldMatrix();
-	}
+	}*/
+	entityList[1]->UpdateCloth(deltaTime, context, clothVertices);
 	camera->Update(deltaTime);
 }
 
@@ -304,18 +290,15 @@ void Game::Draw(float deltaTime, float totalTime)
 		D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL,
 		1.0f,
 		0);
+	//sphere
+	context->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	entityList[0]->PerpareMaterial(camera->GetViewMatrix(), camera->GetProjectionMatrix());
+	entityList[0]->Draw(context, DXGI_FORMAT_R32_UINT, sizeof(Vertex));
+	//cloth
+	context->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
+	entityList[1]->PerpareMaterial(camera->GetViewMatrix(), camera->GetProjectionMatrix());
+	entityList[1]->Draw(context, DXGI_FORMAT_R16_UINT, sizeof(VertexPosColor));
 
-
-	// Send data to shader variables
-	//  - Do this ONCE PER OBJECT you're drawing
-	//  - This is actually a complex process of copying data to a local buffer
-	//    and then copying that entire buffer to the GPU.  
-	//  - The "SimpleShader" class handles all of that for you.
-	//vertexShader->SetMatrix4x4("world", worldMatrix);
-	for (int i = 0; i < entityList.size(); i++) {
-		entityList[i]->PerpareMaterial(camera->GetViewMatrix(), camera->GetProjectionMatrix());
-		entityList[i]->Draw(context);
-	}
 	pixelShader->SetData("light", &light, sizeof(DirectionalLight));
 	pixelShader->SetData("lightTwo", &lightTwo, sizeof(DirectionalLight));
 	pixelShader->CopyAllBufferData(); // Remember to copy to the GPU!!!!

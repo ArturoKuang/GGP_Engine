@@ -4,6 +4,7 @@
 #include "SimpleShader.h"
 #include <DirectXMath.h>
 #include "Material.h"
+#include "ParticleSystem.h"
 
 using namespace DirectX;
 
@@ -15,10 +16,13 @@ public:
 	void SetRotation(float x, float y, float z);
 	void SetScale(float x, float y, float z);
 	XMFLOAT4X4 GetWorldMatrix();
-	void Draw(ID3D11DeviceContext* context);
+	void Draw(ID3D11DeviceContext* context, DXGI_FORMAT format, UINT strideSize);
 	void Move(float totalTime);
 	void PerpareMaterial(XMFLOAT4X4 view, XMFLOAT4X4 projection);
+	void UpdateCloth(float timer, ID3D11DeviceContext* device, VertexPosColor* vertices);
+	void SetParticleSystem(ParticleSystem* p_System);
 private:
+	ParticleSystem* particleSystem;
 	Material* material;
 	Mesh* mesh;
 	XMFLOAT4X4 worldMatrix;

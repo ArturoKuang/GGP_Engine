@@ -14,3 +14,9 @@ struct Vertex
 	DirectX::XMFLOAT2 UV;
 
 };
+
+//cloth struct 
+struct VertexPosColor {
+	DirectX::XMFLOAT3 pos;
+	DirectX::XMFLOAT3 color;
+};

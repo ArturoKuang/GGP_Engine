@@ -13,13 +13,17 @@ class Mesh
 {
 public:
 	Mesh(char* fileName, ID3D11Device* device);
-	Mesh(Vertex vertices[], 
+	Mesh(VertexPosColor vertices[],
 		int vertexCount,
-		unsigned int indices[], 
+		unsigned short indices[], 
 		int indexCount, 
 		ID3D11Device* device);
+
 	ID3D11Buffer* GetVertexBuffer();
 	ID3D11Buffer* GetIndexBuffer();
+	VertexPosColor* GetClothVertices();
+	int GetClothVerticesSize();
+
 	int GetIndexCount();
 	void CreateBuffers(
 		Vertex vertices[],
@@ -27,10 +31,18 @@ public:
 		unsigned int indices[], 
 		int indexCount, 
 		ID3D11Device* device);
+	void CreateClothBuffers(
+		VertexPosColor vertices[],
+		int vertexCount,
+		unsigned short indices[],
+		int indexCount,
+		ID3D11Device* device);
 	~Mesh();
 private:
 	ID3D11Buffer* indexBuffer;
 	ID3D11Buffer* vertexBuffer;
+	VertexPosColor* clothVertices;
+	int clothVerticesSize;
 	int indexBufferCount;
 };
 

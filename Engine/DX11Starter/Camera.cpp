@@ -57,7 +57,7 @@ void Camera::Rotate(float x, float y)
 	rotateY += y;
 
 	// Clamp the x between PI/2 and -PI/2
-	rotateX = max(min(rotateX, XM_PIDIV2), -XM_PIDIV2);
+	//rotateX = max(min(rotateX, XM_PIDIV2), -XM_PIDIV2);
 
 }
 

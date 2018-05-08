@@ -7,6 +7,7 @@
 #include "Entities.h"
 #include "Camera.h"
 #include "LIghts.h"
+#include "ParticleSystem.h"
 
 class Game 
 	: public DXCore
@@ -29,13 +30,14 @@ public:
 	void OnMouseMove (WPARAM buttonState, int x, int y);
 	void OnMouseWheel(float wheelDelta,   int x, int y);
 private:
+	VertexPosColor* clothVertices;
+	unsigned short* clothIndices;
 	//lights
 	DirectionalLight light;
 	DirectionalLight lightTwo;
 	//mesh objects 
-	Mesh* obj;
-	Mesh* obj_1;
-	Mesh* obj_2;
+	Mesh* sphere;
+	Mesh* cloth;
 	//entity list 
 	std::vector<Entities*> entityList;
 	//camera
@@ -47,6 +49,8 @@ private:
 	ID3D11ShaderResourceView* clothTexture;
 	ID3D11ShaderResourceView* wickTexture;
 	ID3D11SamplerState* samplerState;
+	//particle system 
+	ParticleSystem* m_particleSystem;
 
 	
 	// Initialization helper methods - feel free to customize, combine, etc.

@@ -1,13 +1,15 @@
 #include "Mesh.h"
 
 Mesh::Mesh(
-	Vertex vertices[], 
+	VertexPosColor vertices[], 
 	int vertexCount, 
-	unsigned int indices[], 
+	unsigned short indices[], 
 	int indexCount, 
 	ID3D11Device* device)
 {
-	CreateBuffers(vertices, vertexCount, indices, indexCount, device);
+	clothVertices = vertices;
+	clothVerticesSize = vertexCount;
+	CreateClothBuffers(clothVertices, clothVerticesSize, indices, indexCount, device);
 }
 
 Mesh::Mesh(char * fileName, ID3D11Device* device)
@@ -158,6 +160,16 @@ ID3D11Buffer * Mesh::GetIndexBuffer()
 	return indexBuffer;
 }
 
+VertexPosColor * Mesh::GetClothVertices()
+{
+	return clothVertices;
+}
+
+int Mesh::GetClothVerticesSize()
+{
+	return clothVerticesSize;
+}
+
 int Mesh::GetIndexCount()
 {
 	return indexBufferCount;
@@ -206,6 +218,54 @@ void Mesh::CreateBuffers(
 	// - This is how we put the initial data into the buffer
 	D3D11_SUBRESOURCE_DATA initialIndexData;
 	initialIndexData.pSysMem = indices;
+
+	// Actually create the buffer with the initial data
+	// - Once we do this, we'll NEVER CHANGE THE BUFFER AGAIN
+	device->CreateBuffer(&ibd, &initialIndexData, &indexBuffer);
+}
+
+void Mesh::CreateClothBuffers(VertexPosColor vertices[], int vertexCount, unsigned short indices[], int indexCount, ID3D11Device * device)
+{
+	indexBufferCount = indexCount;
+	// Create the VERTEX BUFFER description -----------------------------------
+	// - The description is created on the stack because we only need
+	//    it to create the buffer.  The description is then useless.
+	D3D11_BUFFER_DESC vbd;
+	vbd.Usage = D3D11_USAGE_DYNAMIC;
+	vbd.ByteWidth = vertexCount;       // 3 = number of vertices in the buffer
+	vbd.BindFlags = D3D11_BIND_VERTEX_BUFFER; // Tells DirectX this is a vertex buffer
+	vbd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	vbd.MiscFlags = 0;
+	vbd.StructureByteStride = 0;
+
+	// Create the proper struct to hold the initial vertex data
+	// - This is how we put the initial data into the buffer
+	D3D11_SUBRESOURCE_DATA initialVertexData;
+	initialVertexData.pSysMem = vertices;
+	initialVertexData.SysMemPitch = 0;
+	initialVertexData.SysMemSlicePitch = 0;
+
+	// Actually create the buffer with the initial data
+	// - Once we do this, we'll NEVER CHANGE THE BUFFER AGAIN
+	device->CreateBuffer(&vbd, &initialVertexData, &vertexBuffer);
+
+	// Create the INDEX BUFFER description ------------------------------------
+	// - The description is created on the stack because we only need
+	//    it to create the buffer.  The description is then useless.
+	D3D11_BUFFER_DESC ibd;
+	ibd.Usage = D3D11_USAGE_IMMUTABLE;
+	ibd.ByteWidth = indexCount;         // 3 = number of indices in the buffer
+	ibd.BindFlags = D3D11_BIND_INDEX_BUFFER; // Tells DirectX this is an index buffer
+	ibd.CPUAccessFlags = 0;
+	ibd.MiscFlags = 0;
+	ibd.StructureByteStride = 0;
+
+	// Create the proper struct to hold the initial index data
+	// - This is how we put the initial data into the buffer
+	D3D11_SUBRESOURCE_DATA initialIndexData;
+	initialIndexData.pSysMem = indices;
+	initialIndexData.SysMemPitch = 0;
+	initialIndexData.SysMemSlicePitch = 0;
 
 	// Actually create the buffer with the initial data
 	// - Once we do this, we'll NEVER CHANGE THE BUFFER AGAIN
